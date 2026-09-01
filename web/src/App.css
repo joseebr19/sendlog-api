@@ -50,3 +50,38 @@ tbody tr:hover { background: #141417; }
 .badge.sin_respuesta { background: #2a2a30; color: #7a7a85; }
 
 .estado { padding: 40px; color: #8a8a92; }
+
+.espacio { flex: 1; }
+
+button {
+  background: #1e1e22; border: 1px solid #2a2a30; color: #e8e8ea;
+  padding: 7px 14px; border-radius: 6px; font: inherit; cursor: pointer;
+}
+button:hover { background: #26262b; }
+button:disabled { opacity: 0.4; cursor: default; }
+button.primario { background: #3a3a44; border-color: #4a4a55; }
+button.primario:hover { background: #45454f; }
+button.peligro { color: #e57373; border-color: #4a2a2a; }
+
+tbody tr { cursor: pointer; }
+
+.error { background: #3a1f1f; color: #e5a0a0; padding: 10px 14px; border-radius: 6px; cursor: pointer; }
+
+.modal {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.dialogo {
+  background: #141417; border: 1px solid #2a2a30; border-radius: 10px;
+  padding: 22px; width: 100%; max-width: 560px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.dialogo h2 { margin: 0 0 4px; font-size: 16px; }
+.dialogo label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #8a8a92; flex: 1; }
+.dialogo input, .dialogo select, .dialogo textarea {
+  background: #0e0e10; border: 1px solid #2a2a30; color: #e8e8ea;
+  padding: 8px 10px; border-radius: 6px; font: inherit; width: 100%; box-sizing: border-box;
+}
+.dialogo input:focus, .dialogo select:focus, .dialogo textarea:focus { outline: none; border-color: #4a4a55; }
+.fila { display: flex; gap: 10px; }
+.acciones { display: flex; gap: 8px; margin-top: 6px; }
