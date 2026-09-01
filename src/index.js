@@ -39,11 +39,28 @@ export default {
       return json(results);
     }
 
-    // --- escritura ---
+    if (path === "/api/followups" && request.method === "GET") {
+      const days = Number(url.searchParams.get("days") || 14);
+      const { results } = await env.DB.prepare(
+        `SELECT s.*, c.name AS contact_name, c.twitter, c.instagram, c.discord, c.email,
+                p.name AS pack_name,
+                CAST(julianday('now') - julianday(s.sent_at) AS INTEGER) AS days_ago
+           FROM sends s
+           JOIN contacts c ON c.id = s.contact_id
+           LEFT JOIN packs p ON p.id = s.pack_id
+          WHERE s.user_id = ?
+            AND s.status = 'pending'
+            AND julianday('now') - julianday(s.sent_at) >= ?
+          ORDER BY s.sent_at ASC`
+      ).bind(USER_ID, days).all();
+      return json(results);
+    }
+
+    // --- contacts: escritura ---
 
     if (path === "/api/contacts" && request.method === "POST") {
       const b = await request.json();
-      if (!b.name || !b.name.trim()) return json({ error: "falta el nombre" }, 400);
+      if (!b.name || !b.name.trim()) return json({ error: "name required" }, 400);
 
       const { results } = await env.DB.prepare(
         `INSERT INTO contacts (user_id, name, type, subgenre, listeners, twitter, instagram, discord, email, phone, priority, notes)
@@ -59,11 +76,11 @@ export default {
       return json(results[0], 201);
     }
 
-    const mEdit = path.match(/^\/api\/contacts\/(\d+)$/);
+    const mContact = path.match(/^\/api\/contacts\/(\d+)$/);
 
-    if (mEdit && request.method === "PUT") {
+    if (mContact && request.method === "PUT") {
       const b = await request.json();
-      if (!b.name || !b.name.trim()) return json({ error: "falta el nombre" }, 400);
+      if (!b.name || !b.name.trim()) return json({ error: "name required" }, 400);
 
       const { results } = await env.DB.prepare(
         `UPDATE contacts SET
@@ -76,23 +93,23 @@ export default {
         b.name.trim(), b.type || null, b.subgenre || null, b.listeners ?? null,
         b.twitter || null, b.instagram || null, b.discord || null,
         b.email || null, b.phone || null, b.priority ?? 0, b.notes || null,
-        mEdit[1], USER_ID
+        mContact[1], USER_ID
       ).all();
 
-      if (!results.length) return json({ error: "no encontrado" }, 404);
+      if (!results.length) return json({ error: "not found" }, 404);
       return json(results[0]);
     }
 
-    if (mEdit && request.method === "DELETE") {
+    if (mContact && request.method === "DELETE") {
       const r = await env.DB.prepare(
         `DELETE FROM contacts WHERE id = ? AND user_id = ?`
-      ).bind(mEdit[1], USER_ID).run();
+      ).bind(mContact[1], USER_ID).run();
 
-      if (!r.meta.changes) return json({ error: "no encontrado" }, 404);
+      if (!r.meta.changes) return json({ error: "not found" }, 404);
       return json({ ok: true });
     }
 
-        // --- packs ---
+    // --- packs: escritura ---
 
     if (path === "/api/packs" && request.method === "POST") {
       const b = await request.json();
@@ -106,7 +123,7 @@ export default {
       return json(results[0], 201);
     }
 
-    // --- sends ---
+    // --- sends: escritura ---
 
     if (path === "/api/sends" && request.method === "POST") {
       const b = await request.json();

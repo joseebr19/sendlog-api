@@ -69,7 +69,7 @@ function SendRow({ send, packs, onSave, onDelete, onNewPack }) {
   );
 }
 
-function ContactForm({ initial, packs, sends, onSave, onCancel, onDelete, onSaveSend, onDeleteSend, onNewSend, onNewPack }) {
+function ContactForm({ initial, packs, sends, subgenres, onSave, onCancel, onDelete, onSaveSend, onDeleteSend, onNewSend, onNewPack }) {
   const [f, setF] = useState({ ...EMPTY, ...initial, listeners: initial?.listeners ?? "" });
   const [tab, setTab] = useState("data");
   const [saving, setSaving] = useState(false);
@@ -113,7 +113,12 @@ function ContactForm({ initial, packs, sends, onSave, onCancel, onDelete, onSave
                   <option value="prod+artist">prod+artist</option>
                 </select>
               </label>
-              <label>Subgenre<input value={f.subgenre} onChange={set("subgenre")} /></label>
+              <label>Subgenre
+                <input list="subgenres" value={f.subgenre} onChange={set("subgenre")} />
+                <datalist id="subgenres">
+                  {subgenres.map((s) => <option key={s} value={s} />)}
+                </datalist>
+              </label>
               <label>Listeners<input type="number" value={f.listeners} onChange={set("listeners")} /></label>
             </div>
 
@@ -175,6 +180,9 @@ export default function App() {
   const [contacts, setContacts] = useState([]);
   const [sends, setSends] = useState([]);
   const [packs, setPacks] = useState([]);
+  const [followups, setFollowups] = useState([]);
+  const [view, setView] = useState("contacts");
+  const [days, setDays] = useState(14);
   const [q, setQ] = useState("");
   const [type, setType] = useState("");
   const [sort, setSort] = useState("name");
@@ -192,6 +200,13 @@ export default function App() {
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetch(`/api/followups?days=${days}`)
+      .then((r) => r.json())
+      .then(setFollowups)
+      .catch((e) => setError(String(e)));
+  }, [days, sends]);
 
   const packName = (id) => packs.find((p) => p.id === Number(id))?.name ?? null;
 
@@ -220,7 +235,7 @@ export default function App() {
   };
 
   const saveSend = async (s) => {
-    setSends((prev) => prev.map((x) => (x.id === s.id ? { ...s, pack_name: packName(s.pack_id) } : x)));
+    setSends((prev) => prev.map((x) => (x.id === s.id ? { ...x, ...s, pack_name: packName(s.pack_id) } : x)));
     const res = await fetch(`/api/sends/${s.id}`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
@@ -267,6 +282,7 @@ export default function App() {
   }
 
   const types = [...new Set(contacts.map((c) => c.type).filter(Boolean))].sort();
+  const subgenres = [...new Set(contacts.map((c) => c.subgenre).filter(Boolean))].sort();
 
   const visible = contacts
     .filter((c) => {
@@ -291,74 +307,135 @@ export default function App() {
     <div className="app">
       <header>
         <h1>Placements</h1>
-        <span className="count">{visible.length} of {contacts.length}</span>
+        <div className="tabs top">
+          <button className={view === "contacts" ? "on" : ""} onClick={() => setView("contacts")}>Contacts</button>
+          <button className={view === "followups" ? "on" : ""} onClick={() => setView("followups")}>
+            Follow-up {followups.length > 0 && <span className="count">{followups.length}</span>}
+          </button>
+        </div>
         <span className="spacer" />
-        <button className="primary" onClick={() => setEditing({})}>+ New</button>
+        {view === "contacts" && <button className="primary" onClick={() => setEditing({})}>+ New</button>}
       </header>
 
       {error && <p className="error" onClick={() => setError(null)}>{error} (click to dismiss)</p>}
 
-      <div className="filters">
-        <input placeholder="Search by name, handle or subgenre…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <select value={type} onChange={(e) => setType(e.target.value)}>
-          <option value="">All types</option>
-          {types.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <select value={sort} onChange={(e) => setSort(e.target.value)}>
-          <option value="name">Name</option>
-          <option value="listeners">Listeners</option>
-          <option value="sent">Last sent</option>
-        </select>
-      </div>
+      {view === "contacts" && (
+        <>
+          <div className="filters">
+            <input placeholder="Search by name, handle or subgenre…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <select value={type} onChange={(e) => setType(e.target.value)}>
+              <option value="">All types</option>
+              {types.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <select value={sort} onChange={(e) => setSort(e.target.value)}>
+              <option value="name">Name</option>
+              <option value="listeners">Listeners</option>
+              <option value="sent">Last sent</option>
+            </select>
+          </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th><th>Type</th><th>Subgenre</th><th>Contact</th>
-            <th className="num">Listeners</th><th>Pack</th><th>Last sent</th><th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {visible.map((c) => {
-            const s = last[c.id];
-            const n = sendCount[c.id] || 0;
-            return (
-              <tr key={c.id}>
-                <td className="name">
-                  <span className="clickable" onClick={() => setEditing(c)}>{c.name}</span>
-                  {n > 1 && <span className="times" title={`${n} sends`}>×{n}</span>}
-                </td>
-                <td>{c.type}</td>
-                <td>{c.subgenre}</td>
-                <td className="handle">
-                  {handleOf(c)}
-                  {channelOf(c) && <span className="channel">{CHANNELS[channelOf(c)]}</span>}
-                </td>
-                <td className="num">{formatListeners(c.listeners)}</td>
-                <td>{s ? s.pack_name : <span className="empty">—</span>}</td>
-                <td>{s ? s.sent_at : <span className="empty">—</span>}</td>
-                <td>
-                  {s ? (
-                    <select
-                      className={"badge-select " + s.status}
-                      value={s.status}
-                      onChange={(e) => saveSend({ ...s, status: e.target.value })}
-                    >
-                      {STATUS_KEYS.map((k) => <option key={k} value={k}>{STATUS[k]}</option>)}
-                    </select>
-                  ) : <span className="empty">—</span>}
-                </td>
+          <table className="t-contacts">
+            <thead>
+              <tr>
+                <th>Name</th><th>Type</th><th>Subgenre</th><th>Contact</th>
+                <th className="num">Listeners</th><th>Pack</th><th>Last sent</th><th>Status</th>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {visible.map((c) => {
+                const s = last[c.id];
+                const n = sendCount[c.id] || 0;
+                return (
+                  <tr key={c.id}>
+                    <td className="name">
+                      <span className="clickable" onClick={() => setEditing(c)}>{c.name}</span>
+                      {n > 1 && <span className="times" title={`${n} sends`}>×{n}</span>}
+                    </td>
+                    <td>{c.type}</td>
+                    <td>{c.subgenre}</td>
+                    <td className="handle">
+                      {handleOf(c)}
+                      {channelOf(c) && <span className="channel">{CHANNELS[channelOf(c)]}</span>}
+                    </td>
+                    <td className="num">{formatListeners(c.listeners)}</td>
+                    <td>{s ? s.pack_name : <span className="empty">—</span>}</td>
+                    <td>{s ? s.sent_at : <span className="empty">—</span>}</td>
+                    <td>
+                      {s ? (
+                        <select
+                          className={"badge-select " + s.status}
+                          value={s.status}
+                          onChange={(e) => saveSend({ ...s, status: e.target.value })}
+                        >
+                          {STATUS_KEYS.map((k) => <option key={k} value={k}>{STATUS[k]}</option>)}
+                        </select>
+                      ) : <span className="empty">—</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {view === "followups" && (
+        <>
+          <div className="filters">
+            <span className="note">Pending sends older than</span>
+            <select value={days} onChange={(e) => setDays(Number(e.target.value))}>
+              <option value={7}>7 days</option>
+              <option value={14}>14 days</option>
+              <option value={30}>30 days</option>
+              <option value={60}>60 days</option>
+            </select>
+          </div>
+
+          {followups.length === 0 && <p className="empty-note">Nothing to follow up on.</p>}
+
+          {followups.length > 0 && (
+            <table className="t-follow">
+              <thead>
+                <tr>
+                  <th>Name</th><th>Contact</th><th>Pack</th><th>Sent</th><th>Waiting</th><th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {followups.map((f) => {
+                  const c = contacts.find((x) => x.id === f.contact_id);
+                  return (
+                    <tr key={f.id}>
+                      <td className="name">
+                        <span className="clickable" onClick={() => c && setEditing(c)}>{f.contact_name}</span>
+                      </td>
+                      <td className="handle">{f.twitter || f.instagram || f.discord || f.email}</td>
+                      <td>{f.pack_name || <span className="empty">—</span>}</td>
+                      <td>{f.sent_at}</td>
+                      <td className={f.days_ago >= 30 ? "stale" : ""}>{f.days_ago}d</td>
+                      <td>
+                        <select
+                          className={"badge-select " + f.status}
+                          value={f.status}
+                          onChange={(e) => saveSend({ ...f, status: e.target.value })}
+                        >
+                          {STATUS_KEYS.map((k) => <option key={k} value={k}>{STATUS[k]}</option>)}
+                        </select>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </>
+      )}
 
       {editing && (
         <ContactForm
           initial={editing}
           packs={packs}
           sends={sends}
+          subgenres={subgenres}
           onSave={save}
           onCancel={() => setEditing(null)}
           onDelete={remove}
