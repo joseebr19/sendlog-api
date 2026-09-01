@@ -15,12 +15,13 @@ const MESES = {
 const CANALES = { tw: "tw", mail: "mail", ig: "ig", discord: "discord" };
 
 const ESTADOS = {
-  pendiente: "pendiente",
-  respondio: "respondio",
-  produciendo: "produciendo",
-  placement: "placement",
-  descartado: "descartado",
-  "sin respuesta": "sin_respuesta",
+  pendiente: "pending",
+  respondio: "replied",
+  produciendo: "producing",
+  usado: "used",
+  publicado: "released",
+  descartado: "declined",
+  "sin respuesta": "no_reply",
 };
 
 // --- parser de CSV (soporta comillas y saltos de linea dentro de celda) ---
@@ -82,6 +83,7 @@ function fecha(v) {
 }
 
 const tipo = (v) => limpiar(v).replace(/\s*\+\s*/, "+").toLowerCase() || null;
+const subgenero = (v) => limpiar(v).toLowerCase() || null;
 
 // --- proceso ---
 const filas = parseCSV(fs.readFileSync("contacts.csv", "utf8"));
@@ -142,7 +144,7 @@ filas.forEach((f, i) => {
     `INSERT INTO contacts (id, user_id, name, type, subgenre, listeners, twitter, instagram, discord, email, notes) VALUES (` +
       [
         contactId, sql(USER_ID), sql(nombre), sql(tipo(f[col.tipo])),
-        sql(limpiar(f[col.subg]) || null), oyentes(f[col.oyentes]) ?? "NULL",
+        sql(subgenero(f[col.subg])), oyentes(f[col.oyentes]) ?? "NULL",
         sql(twitter), sql(instagram), sql(discord), sql(email),
         sql(limpiar(f[col.notas]) || null),
       ].join(", ") + `);`
@@ -154,9 +156,9 @@ filas.forEach((f, i) => {
   const fechaEnvio = fecha(f[col.fecha]);
   if (!pack && !estadoBruto && !fechaEnvio) return;
 
-  const estado = ESTADOS[estadoBruto.toLowerCase()] || "pendiente";
+  const estado = ESTADOS[estadoBruto.toLowerCase()] || "pending";
   if (estadoBruto && !ESTADOS[estadoBruto.toLowerCase()]) {
-    avisos.push(`fila ${i + 2} (${nombre}): estado "${estadoBruto}" no reconocido, se guarda como pendiente`);
+    avisos.push(`fila ${i + 2} (${nombre}): estado "${estadoBruto}" no reconocido, se guarda como pending`);
   }
   if (!canal) {
     avisos.push(`fila ${i + 2} (${nombre}): envio sin canal valido, se omite`);

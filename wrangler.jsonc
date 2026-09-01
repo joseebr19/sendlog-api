@@ -11,6 +11,10 @@
 		"enabled": true
 	},
 	"upload_source_maps": true,
+	"assets": {
+		"directory": "./public/",
+		"not_found_handling": "single-page-application"
+	},
 	"d1_databases": [
 		{
 			"binding": "DB",

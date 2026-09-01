@@ -167,3 +167,4 @@ dist
 .wrangler/
 contacts.csv
 import.sql
+public/
