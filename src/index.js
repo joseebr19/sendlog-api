@@ -6,6 +6,8 @@ const json = (data, status = 200) =>
     headers: { "content-type": "application/json" },
   });
 
+const subgenre = (v) => v?.trim().toLowerCase() || null;
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -67,7 +69,7 @@ export default {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          RETURNING *`
       ).bind(
-        USER_ID, b.name.trim(), b.type || null, b.subgenre || null,
+        USER_ID, b.name.trim(), b.type || null, subgenre(b.subgenre),
         b.listeners ?? null, b.twitter || null, b.instagram || null,
         b.discord || null, b.email || null, b.phone || null,
         b.priority ?? 0, b.notes || null
@@ -90,7 +92,7 @@ export default {
          WHERE id = ? AND user_id = ?
          RETURNING *`
       ).bind(
-        b.name.trim(), b.type || null, b.subgenre || null, b.listeners ?? null,
+        b.name.trim(), b.type || null, subgenre(b.subgenre), b.listeners ?? null,
         b.twitter || null, b.instagram || null, b.discord || null,
         b.email || null, b.phone || null, b.priority ?? 0, b.notes || null,
         mContact[1], USER_ID
