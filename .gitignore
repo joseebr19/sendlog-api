@@ -168,3 +168,4 @@ dist
 contacts.csv
 import.sql
 public/
+.dev.vars

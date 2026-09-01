@@ -28,6 +28,17 @@ function channelOf(c) {
   return "";
 }
 
+function Login() {
+  return (
+    <div className="login">
+      <h1>Placements</h1>
+      <p>Track who you send your packs to, and what came back.</p>
+      <a className="btn-google" href="/api/auth/login">Sign in with Google</a>
+      <p className="fine">Your contacts are private and only visible to you.</p>
+    </div>
+  );
+}
+
 function SendRow({ send, packs, onSave, onDelete, onNewPack }) {
   const [s, setS] = useState(send);
   const set = (k) => (e) => {
@@ -226,6 +237,8 @@ function ContactForm({ initial, packs, sends, subgenres, onSave, onCancel, onDel
 }
 
 export default function App() {
+  const [me, setMe] = useState(null);
+  const [checking, setChecking] = useState(true);
   const [contacts, setContacts] = useState([]);
   const [sends, setSends] = useState([]);
   const [packs, setPacks] = useState([]);
@@ -242,6 +255,15 @@ export default function App() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    fetch("/api/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setMe)
+      .catch(() => setMe(null))
+      .finally(() => setChecking(false));
+  }, []);
+
+  useEffect(() => {
+    if (!me) return;
     Promise.all([
       fetch("/api/contacts").then((r) => r.json()),
       fetch("/api/sends").then((r) => r.json()),
@@ -250,14 +272,15 @@ export default function App() {
       .then(([c, s, p]) => { setContacts(c); setSends(s); setPacks(p); })
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false));
-  }, []);
+  }, [me]);
 
   useEffect(() => {
+    if (!me) return;
     fetch(`/api/followups?days=${days}`)
       .then((r) => r.json())
       .then(setFollowups)
       .catch((e) => setError(String(e)));
-  }, [days, sends]);
+  }, [days, sends, me]);
 
   const packName = (id) => packs.find((p) => p.id === Number(id))?.name ?? null;
 
@@ -387,6 +410,8 @@ export default function App() {
     );
   };
 
+  if (checking) return <p className="state">Loading…</p>;
+  if (!me) return <Login />;
   if (loading) return <p className="state">Loading…</p>;
 
   return (
@@ -401,6 +426,10 @@ export default function App() {
         </div>
         <span className="spacer" />
         {view === "contacts" && <button className="primary" onClick={() => setEditing({})}>+ New</button>}
+        <div className="user">
+          {me.avatar_url && <img src={me.avatar_url} alt="" />}
+          <a href="/api/auth/logout" title="Sign out">Sign out</a>
+        </div>
       </header>
 
       {error && <p className="error" onClick={() => setError(null)}>{error} (click to dismiss)</p>}

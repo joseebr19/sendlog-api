@@ -11,10 +11,18 @@
 		"enabled": true
 	},
 	"upload_source_maps": true,
+	"workers_dev": true,
+	"vars": {
+		"GOOGLE_CLIENT_ID": "506206154159-4910jhuollic3fg1gbggd4nbmkuc43g7.apps.googleusercontent.com"
+	},
 	"assets": {
 		"directory": "./public/",
-		"not_found_handling": "single-page-application"
+		"not_found_handling": "single-page-application",
+		"run_worker_first": ["/api/*"]
 	},
+	"routes": [
+		{ "pattern": "app.luvbesly.com", "custom_domain": true }
+	],
 	"d1_databases": [
 		{
 			"binding": "DB",

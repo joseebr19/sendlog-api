@@ -54,5 +54,3 @@ CREATE INDEX idx_packs_user     ON packs(user_id);
 CREATE INDEX idx_sends_user     ON sends(user_id);
 CREATE INDEX idx_sends_contact  ON sends(contact_id);
 CREATE INDEX idx_sends_status   ON sends(user_id, status);
-
-INSERT INTO users (id, email, name) VALUES ('me', 'luvbeslymail@gmail.com', 'luvbesly');

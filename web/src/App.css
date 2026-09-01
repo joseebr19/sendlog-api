@@ -18,6 +18,25 @@ h1 { font-size: 20px; margin: 0; letter-spacing: -0.01em; }
 .spacer { flex: 1; }
 .note { color: #8a8a92; font-size: 13px; align-self: center; }
 
+.login {
+  max-width: 380px; margin: 15vh auto; text-align: center;
+  display: flex; flex-direction: column; gap: 14px; padding: 0 20px;
+}
+.login h1 { font-size: 28px; }
+.login p { color: #8a8a92; margin: 0; }
+.login .fine { font-size: 12px; color: #5a5a65; margin-top: 8px; }
+.btn-google {
+  display: inline-block; background: #3a3a44; border: 1px solid #4a4a55;
+  color: #e8e8ea; padding: 10px 18px; border-radius: 8px;
+  text-decoration: none; font-weight: 500; margin-top: 8px;
+}
+.btn-google:hover { background: #45454f; }
+
+.user { display: flex; align-items: center; gap: 8px; }
+.user img { width: 26px; height: 26px; border-radius: 50%; }
+.user a { color: #8a8a92; font-size: 12px; text-decoration: none; }
+.user a:hover { color: #c8c8d0; text-decoration: underline; }
+
 .filters { display: flex; gap: 8px; margin-bottom: 16px; }
 .filters input, .filters select {
   background: #18181b; border: 1px solid #2a2a30; color: inherit;
