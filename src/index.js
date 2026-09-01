@@ -92,6 +92,69 @@ export default {
       return json({ ok: true });
     }
 
+        // --- packs ---
+
+    if (path === "/api/packs" && request.method === "POST") {
+      const b = await request.json();
+      if (!b.name || !b.name.trim()) return json({ error: "name required" }, 400);
+
+      const { results } = await env.DB.prepare(
+        `INSERT INTO packs (user_id, name, url, released_at, notes)
+         VALUES (?, ?, ?, ?, ?) RETURNING *`
+      ).bind(USER_ID, b.name.trim(), b.url || null, b.released_at || null, b.notes || null).all();
+
+      return json(results[0], 201);
+    }
+
+    // --- sends ---
+
+    if (path === "/api/sends" && request.method === "POST") {
+      const b = await request.json();
+      if (!b.contact_id || !b.channel || !b.sent_at) {
+        return json({ error: "contact_id, channel and sent_at required" }, 400);
+      }
+
+      const { results } = await env.DB.prepare(
+        `INSERT INTO sends (user_id, contact_id, pack_id, channel, sent_at, status, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`
+      ).bind(
+        USER_ID, b.contact_id, b.pack_id || null, b.channel,
+        b.sent_at, b.status || "pending", b.notes || null
+      ).all();
+
+      return json(results[0], 201);
+    }
+
+    const mSend = path.match(/^\/api\/sends\/(\d+)$/);
+
+    if (mSend && request.method === "PUT") {
+      const b = await request.json();
+
+      const { results } = await env.DB.prepare(
+        `UPDATE sends SET
+           pack_id = ?, channel = ?, sent_at = ?, replied_at = ?,
+           status = ?, result_url = ?, notes = ?
+         WHERE id = ? AND user_id = ?
+         RETURNING *`
+      ).bind(
+        b.pack_id || null, b.channel, b.sent_at, b.replied_at || null,
+        b.status, b.result_url || null, b.notes || null,
+        mSend[1], USER_ID
+      ).all();
+
+      if (!results.length) return json({ error: "not found" }, 404);
+      return json(results[0]);
+    }
+
+    if (mSend && request.method === "DELETE") {
+      const r = await env.DB.prepare(
+        `DELETE FROM sends WHERE id = ? AND user_id = ?`
+      ).bind(mSend[1], USER_ID).run();
+
+      if (!r.meta.changes) return json({ error: "not found" }, 404);
+      return json({ ok: true });
+    }
+
     return json({ error: "not found" }, 404);
   },
 };
