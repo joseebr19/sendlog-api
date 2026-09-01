@@ -127,6 +127,38 @@ export default {
 
     // --- sends: escritura ---
 
+    if (path === "/api/sends/bulk" && request.method === "POST") {
+      const b = await request.json();
+      if (!Array.isArray(b.contacts) || !b.contacts.length) {
+        return json({ error: "contacts required" }, 400);
+      }
+      if (b.contacts.length > 200) return json({ error: "too many" }, 400);
+      if (!b.sent_at) return json({ error: "sent_at required" }, 400);
+
+      const stmt = env.DB.prepare(
+        `INSERT INTO sends (user_id, contact_id, pack_id, channel, sent_at, status)
+         VALUES (?, ?, ?, ?, ?, 'pending')`
+      );
+
+      await env.DB.batch(
+        b.contacts.map((c) =>
+          stmt.bind(USER_ID, c.id, b.pack_id || null, c.channel, b.sent_at)
+        )
+      );
+
+      const { results } = await env.DB.prepare(
+        `SELECT s.*, c.name AS contact_name, p.name AS pack_name
+           FROM sends s
+           JOIN contacts c ON c.id = s.contact_id
+           LEFT JOIN packs p ON p.id = s.pack_id
+          WHERE s.user_id = ? AND s.sent_at = ?
+          ORDER BY s.id DESC
+          LIMIT ?`
+      ).bind(USER_ID, b.sent_at, b.contacts.length).all();
+
+      return json(results, 201);
+    }
+
     if (path === "/api/sends" && request.method === "POST") {
       const b = await request.json();
       if (!b.contact_id || !b.channel || !b.sent_at) {

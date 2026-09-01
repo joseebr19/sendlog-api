@@ -38,15 +38,20 @@ td {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 tbody tr:hover { background: #141417; }
+tr.sel { background: #16161b; }
 
-.t-contacts th:nth-child(1) { width: 16%; }
-.t-contacts th:nth-child(2) { width: 9%; }
-.t-contacts th:nth-child(3) { width: 10%; }
-.t-contacts th:nth-child(4) { width: 24%; }
-.t-contacts th:nth-child(5) { width: 8%; }
-.t-contacts th:nth-child(6) { width: 13%; }
-.t-contacts th:nth-child(7) { width: 10%; }
+td.check, th.check { padding-right: 0; }
+.check input { cursor: pointer; }
+
+.t-contacts th:nth-child(1) { width: 3%; }
+.t-contacts th:nth-child(2) { width: 15%; }
+.t-contacts th:nth-child(3) { width: 8%; }
+.t-contacts th:nth-child(4) { width: 10%; }
+.t-contacts th:nth-child(5) { width: 23%; }
+.t-contacts th:nth-child(6) { width: 8%; }
+.t-contacts th:nth-child(7) { width: 13%; }
 .t-contacts th:nth-child(8) { width: 10%; }
+.t-contacts th:nth-child(9) { width: 10%; }
 
 .t-follow th:nth-child(1) { width: 18%; }
 .t-follow th:nth-child(2) { width: 26%; }
@@ -99,6 +104,13 @@ button.primary:hover { background: #45454f; }
 button.danger { color: #e57373; border-color: #4a2a2a; }
 button.small { padding: 4px 8px; }
 
+.bulkbar {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: #1e1e22; border: 1px solid #3a3a44; border-radius: 10px;
+  padding: 10px 14px; display: flex; align-items: center; gap: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
 .modal {
   position: fixed; inset: 0; background: rgba(0,0,0,0.6);
   display: flex; align-items: center; justify-content: center; padding: 20px;
@@ -108,6 +120,7 @@ button.small { padding: 4px 8px; }
   padding: 22px; width: 100%; max-width: 620px;
   display: flex; flex-direction: column; gap: 12px;
 }
+.dialog.narrow { max-width: 420px; }
 .dialog h2 { margin: 0 0 4px; font-size: 16px; }
 .dialog label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #8a8a92; flex: 1; }
 .dialog input, .dialog select, .dialog textarea {
@@ -115,6 +128,7 @@ button.small { padding: 4px 8px; }
   padding: 8px 10px; border-radius: 6px; font: inherit; width: 100%; box-sizing: border-box;
 }
 .dialog input:focus, .dialog select:focus, .dialog textarea:focus { outline: none; border-color: #4a4a55; }
+.dialog .note { align-self: flex-start; }
 .row { display: flex; gap: 10px; }
 .actions { display: flex; gap: 8px; margin-top: 6px; }
 

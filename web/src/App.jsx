@@ -69,6 +69,55 @@ function SendRow({ send, packs, onSave, onDelete, onNewPack }) {
   );
 }
 
+function BulkDialog({ count, packs, onSend, onCancel, onNewPack }) {
+  const [packId, setPackId] = useState(packs[0]?.id ?? "");
+  const [date, setDate] = useState(today());
+  const [sending, setSending] = useState(false);
+
+  const changePack = async (e) => {
+    if (e.target.value === "__new__") {
+      const name = prompt("Pack name:");
+      if (!name || !name.trim()) return;
+      const pack = await onNewPack(name.trim());
+      if (pack) setPackId(pack.id);
+      return;
+    }
+    setPackId(e.target.value);
+  };
+
+  return (
+    <div className="modal" onClick={onCancel}>
+      <div className="dialog narrow" onClick={(e) => e.stopPropagation()}>
+        <h2>Log send for {count} contact{count === 1 ? "" : "s"}</h2>
+
+        <label>Pack
+          <select value={packId} onChange={changePack}>
+            <option value="">no pack</option>
+            {packs.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            <option value="__new__">+ New pack…</option>
+          </select>
+        </label>
+
+        <label>Date<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+
+        <p className="note">Each contact uses its own channel. Contacts with no handle are skipped.</p>
+
+        <div className="actions">
+          <span className="spacer" />
+          <button onClick={onCancel}>Cancel</button>
+          <button className="primary" disabled={sending} onClick={async () => {
+            setSending(true);
+            await onSend(packId, date);
+            setSending(false);
+          }}>
+            {sending ? "Saving…" : "Log send"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ContactForm({ initial, packs, sends, subgenres, onSave, onCancel, onDelete, onSaveSend, onDeleteSend, onNewSend, onNewPack }) {
   const [f, setF] = useState({ ...EMPTY, ...initial, listeners: initial?.listeners ?? "" });
   const [tab, setTab] = useState("data");
@@ -187,6 +236,8 @@ export default function App() {
   const [type, setType] = useState("");
   const [sort, setSort] = useState("name");
   const [editing, setEditing] = useState(null);
+  const [selected, setSelected] = useState(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -274,6 +325,35 @@ export default function App() {
     return created;
   };
 
+  const bulkSend = async (pack_id, sent_at) => {
+    const list = [...selected]
+      .map((id) => contacts.find((c) => c.id === id))
+      .filter(Boolean)
+      .map((c) => ({ id: c.id, channel: channelOf(c) }))
+      .filter((c) => c.channel);
+
+    if (!list.length) { setError("No valid contacts selected"); return; }
+
+    const res = await fetch("/api/sends/bulk", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ pack_id: pack_id || null, sent_at, contacts: list }),
+    });
+    if (!res.ok) { setError("Could not create sends"); return; }
+    const created = await res.json();
+    setSends((prev) => [...prev, ...created]);
+    setSelected(new Set());
+    setBulkOpen(false);
+  };
+
+  const toggle = (id) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
   const last = {};
   const sendCount = {};
   for (const s of sends) {
@@ -300,6 +380,12 @@ export default function App() {
       }
       return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
     });
+
+  const toggleAll = () => {
+    setSelected((prev) =>
+      prev.size === visible.length ? new Set() : new Set(visible.map((c) => c.id))
+    );
+  };
 
   if (loading) return <p className="state">Loading…</p>;
 
@@ -337,6 +423,13 @@ export default function App() {
           <table className="t-contacts">
             <thead>
               <tr>
+                <th className="check">
+                  <input
+                    type="checkbox"
+                    checked={visible.length > 0 && selected.size === visible.length}
+                    onChange={toggleAll}
+                  />
+                </th>
                 <th>Name</th><th>Type</th><th>Subgenre</th><th>Contact</th>
                 <th className="num">Listeners</th><th>Pack</th><th>Last sent</th><th>Status</th>
               </tr>
@@ -346,7 +439,10 @@ export default function App() {
                 const s = last[c.id];
                 const n = sendCount[c.id] || 0;
                 return (
-                  <tr key={c.id}>
+                  <tr key={c.id} className={selected.has(c.id) ? "sel" : ""}>
+                    <td className="check">
+                      <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggle(c.id)} />
+                    </td>
                     <td className="name">
                       <span className="clickable" onClick={() => setEditing(c)}>{c.name}</span>
                       {n > 1 && <span className="times" title={`${n} sends`}>×{n}</span>}
@@ -428,6 +524,24 @@ export default function App() {
             </table>
           )}
         </>
+      )}
+
+      {selected.size > 0 && view === "contacts" && (
+        <div className="bulkbar">
+          <span>{selected.size} selected</span>
+          <button onClick={() => setSelected(new Set())}>Clear</button>
+          <button className="primary" onClick={() => setBulkOpen(true)}>Log send</button>
+        </div>
+      )}
+
+      {bulkOpen && (
+        <BulkDialog
+          count={selected.size}
+          packs={packs}
+          onSend={bulkSend}
+          onCancel={() => setBulkOpen(false)}
+          onNewPack={newPack}
+        />
       )}
 
       {editing && (
