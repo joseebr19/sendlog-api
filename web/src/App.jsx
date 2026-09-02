@@ -458,7 +458,7 @@ export default function App() {
   return (
     <div className="app">
       <header>
-        <h1>Send Log</h1>
+        <a href="https://luvbesly.com" className="logo-link"><h1>Send Log</h1></a>
         <div className="tabs top">
           <button className={view === "contacts" ? "on" : ""} onClick={() => setView("contacts")}>Contacts</button>
           <button className={view === "followups" ? "on" : ""} onClick={() => setView("followups")}>
@@ -527,7 +527,7 @@ export default function App() {
                     <td className="num">{formatListeners(c.listeners)}</td>
                     <td>{s ? s.pack_name : <span className="empty">—</span>}</td>
                     <td>{s ? s.sent_at : <span className="empty">—</span>}</td>
-                    <td>
+                    <td className="status-cell">
                       {s ? (
                         <>
                           <select
@@ -584,7 +584,7 @@ export default function App() {
                       <td>{f.pack_name || <span className="empty">—</span>}</td>
                       <td>{f.sent_at}</td>
                       <td className={f.days_ago >= 30 ? "stale" : ""}>{f.days_ago}d</td>
-                      <td>
+                      <td className="status-cell">
                         <select
                           className={"badge-select " + f.status}
                           value={f.status}

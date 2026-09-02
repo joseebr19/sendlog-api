@@ -32,6 +32,8 @@ h1 {
   font-family: 'Orbitron', sans-serif; font-size: 1.1rem; font-weight: 900;
   text-transform: uppercase; letter-spacing: 4px; color: var(--text-pure); margin: 0;
 }
+.logo-link { text-decoration: none; transition: opacity var(--t-fast, 0.2s ease); }
+.logo-link:hover { opacity: 0.75; }
 .count {
   font-size: 11px; color: var(--text-gray-dark); background: var(--bg-elevated);
   border: 1px solid var(--border-dark);
@@ -82,6 +84,7 @@ td {
   padding: 9px 10px; border-bottom: 1px solid var(--border-dark);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+td.status-cell { overflow: visible; text-overflow: clip; }
 tbody tr:hover { background: var(--bg-elevated); }
 tr.sel { background: var(--bg-card); }
 
