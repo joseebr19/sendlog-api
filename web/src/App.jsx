@@ -31,7 +31,7 @@ function channelOf(c) {
 function Login() {
   return (
     <div className="login">
-      <h1>Placements</h1>
+      <h1>Send Log</h1>
       <p>Track who you send your packs to, and what came back.</p>
       <a className="btn-google" href="/api/auth/login">Sign in with Google</a>
       <p className="fine">Your contacts are private and only visible to you.</p>
@@ -369,6 +369,15 @@ export default function App() {
     setBulkOpen(false);
   };
 
+  const deleteAccount = async () => {
+    const typed = prompt(`This deletes your account and ALL your data (contacts, sends, packs) forever.\n\nType your email to confirm: ${me.email}`);
+    if (typed !== me.email) return;
+
+    const res = await fetch("/api/me", { method: "DELETE" });
+    if (!res.ok) { setError("Could not delete account"); return; }
+    window.location.href = "/";
+  };
+
   const toggle = (id) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -417,7 +426,7 @@ export default function App() {
   return (
     <div className="app">
       <header>
-        <h1>Placements</h1>
+        <h1>Send Log</h1>
         <div className="tabs top">
           <button className={view === "contacts" ? "on" : ""} onClick={() => setView("contacts")}>Contacts</button>
           <button className={view === "followups" ? "on" : ""} onClick={() => setView("followups")}>
@@ -428,6 +437,7 @@ export default function App() {
         {view === "contacts" && <button className="primary" onClick={() => setEditing({})}>+ New</button>}
         <div className="user">
           {me.avatar_url && <img src={me.avatar_url} alt="" />}
+          <a href="#" className="danger-link" onClick={(e) => { e.preventDefault(); deleteAccount(); }}>Delete account</a>
           <a href="/api/auth/logout" title="Sign out">Sign out</a>
         </div>
       </header>
