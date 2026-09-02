@@ -253,6 +253,8 @@ export default function App() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
 
   useEffect(() => {
     fetch("/api/me")
@@ -369,6 +371,34 @@ export default function App() {
     setBulkOpen(false);
   };
 
+  const importCSV = async (file) => {
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const text = await file.text();
+      const year = new Date().getFullYear();
+      const res = await fetch(`/api/contacts/import?year=${year}`, {
+        method: "POST",
+        headers: { "content-type": "text/csv" },
+        body: text,
+      });
+      if (!res.ok) { setError("Could not import CSV"); return; }
+      const result = await res.json();
+      setImportResult(result);
+      if (result.warnings.length) result.warnings.forEach((w) => console.warn(w));
+      const [c, s, p] = await Promise.all([
+        fetch("/api/contacts").then((r) => r.json()),
+        fetch("/api/sends").then((r) => r.json()),
+        fetch("/api/packs").then((r) => r.json()),
+      ]);
+      setContacts(c); setSends(s); setPacks(p);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const toggle = (id) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -425,7 +455,27 @@ export default function App() {
           </button>
         </div>
         <span className="spacer" />
-        {view === "contacts" && <button className="primary" onClick={() => setEditing({})}>+ New</button>}
+        {view === "contacts" && (
+          <>
+            <a className="btn-import" href="/api/contacts/export">Export contacts</a>
+            <a className="btn-import" href="/api/sends/export">Export sends</a>
+            <label className="btn-import">
+              {importing ? "Importing…" : "Import CSV"}
+              <input
+                type="file"
+                accept=".csv"
+                hidden
+                disabled={importing}
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) importCSV(file);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            <button className="primary" onClick={() => setEditing({})}>+ New</button>
+          </>
+        )}
         <div className="user">
           {me.avatar_url && <img src={me.avatar_url} alt="" />}
           <a href="/api/auth/logout" title="Sign out">Sign out</a>
@@ -433,6 +483,17 @@ export default function App() {
       </header>
 
       {error && <p className="error" onClick={() => setError(null)}>{error} (click to dismiss)</p>}
+
+      {importResult && (
+        <p className="import-summary" onClick={() => setImportResult(null)}>
+          Imported: {importResult.contactsCreated} new contacts, {importResult.contactsUpdated} updated,{" "}
+          {importResult.sendsCreated} sends logged, {importResult.sendsSkipped} sends skipped (already existed).
+          {importResult.warnings.length > 0 && (
+            <> {importResult.warnings.length} warning{importResult.warnings.length === 1 ? "" : "s"} — see console.</>
+          )}
+          {" "}(click to dismiss)
+        </p>
+      )}
 
       {view === "contacts" && (
         <>
