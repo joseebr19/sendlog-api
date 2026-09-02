@@ -47,6 +47,18 @@ function SendRow({ send, packs, onSave, onDelete, onNewPack }) {
     onSave(next);
   };
 
+  const setStatus = (e) => {
+    const status = e.target.value;
+    let result_url = s.result_url;
+    if (status === "released" && !result_url) {
+      const url = prompt("Link to the result (video, Spotify, etc.) — optional, you can add it later:");
+      if (url && url.trim()) result_url = url.trim();
+    }
+    const next = { ...s, status, result_url };
+    setS(next);
+    onSave(next);
+  };
+
   const changePack = async (e) => {
     if (e.target.value === "__new__") {
       const name = prompt("Pack name:");
@@ -62,20 +74,31 @@ function SendRow({ send, packs, onSave, onDelete, onNewPack }) {
   };
 
   return (
-    <div className="send-row">
-      <select value={s.pack_id ?? ""} onChange={changePack}>
-        <option value="">no pack</option>
-        {packs.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        <option value="__new__">+ New pack…</option>
-      </select>
-      <select value={s.channel} onChange={set("channel")}>
-        {Object.entries(CHANNELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-      </select>
-      <input type="date" value={s.sent_at} onChange={set("sent_at")} />
-      <select value={s.status} onChange={set("status")}>
-        {STATUS_KEYS.map((k) => <option key={k} value={k}>{STATUS[k]}</option>)}
-      </select>
-      <button className="danger small" onClick={() => onDelete(s.id)}>×</button>
+    <div className="send-row-wrap">
+      <div className="send-row">
+        <select value={s.pack_id ?? ""} onChange={changePack}>
+          <option value="">no pack</option>
+          {packs.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          <option value="__new__">+ New pack…</option>
+        </select>
+        <select value={s.channel} onChange={set("channel")}>
+          {Object.entries(CHANNELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <input type="date" value={s.sent_at} onChange={set("sent_at")} />
+        <select value={s.status} onChange={setStatus}>
+          {STATUS_KEYS.map((k) => <option key={k} value={k}>{STATUS[k]}</option>)}
+        </select>
+        <button className="danger small" onClick={() => onDelete(s.id)}>×</button>
+      </div>
+      {s.status === "released" && (
+        <input
+          className="result-url-input"
+          type="url"
+          placeholder="Link to the result…"
+          value={s.result_url || ""}
+          onChange={set("result_url")}
+        />
+      )}
     </div>
   );
 }
@@ -318,6 +341,15 @@ export default function App() {
     if (!res.ok) setError("Could not save send");
   };
 
+  const changeStatus = (record, status) => {
+    let result_url = record.result_url;
+    if (status === "released" && !result_url) {
+      const url = prompt("Link to the result (video, Spotify, etc.) — optional, you can add it later:");
+      if (url && url.trim()) result_url = url.trim();
+    }
+    saveSend({ ...record, status, result_url });
+  };
+
   const newSend = async (contact_id, channel) => {
     const res = await fetch("/api/sends", {
       method: "POST",
@@ -497,13 +529,18 @@ export default function App() {
                     <td>{s ? s.sent_at : <span className="empty">—</span>}</td>
                     <td>
                       {s ? (
-                        <select
-                          className={"badge-select " + s.status}
-                          value={s.status}
-                          onChange={(e) => saveSend({ ...s, status: e.target.value })}
-                        >
-                          {STATUS_KEYS.map((k) => <option key={k} value={k}>{STATUS[k]}</option>)}
-                        </select>
+                        <>
+                          <select
+                            className={"badge-select " + s.status}
+                            value={s.status}
+                            onChange={(e) => changeStatus(s, e.target.value)}
+                          >
+                            {STATUS_KEYS.map((k) => <option key={k} value={k}>{STATUS[k]}</option>)}
+                          </select>
+                          {s.result_url && (
+                            <a className="result-link" href={s.result_url} target="_blank" rel="noopener noreferrer" title="View result">🔗</a>
+                          )}
+                        </>
                       ) : <span className="empty">—</span>}
                     </td>
                   </tr>
@@ -551,10 +588,13 @@ export default function App() {
                         <select
                           className={"badge-select " + f.status}
                           value={f.status}
-                          onChange={(e) => saveSend({ ...f, status: e.target.value })}
+                          onChange={(e) => changeStatus(f, e.target.value)}
                         >
                           {STATUS_KEYS.map((k) => <option key={k} value={k}>{STATUS[k]}</option>)}
                         </select>
+                        {f.result_url && (
+                          <a className="result-link" href={f.result_url} target="_blank" rel="noopener noreferrer" title="View result">🔗</a>
+                        )}
                       </td>
                     </tr>
                   );
