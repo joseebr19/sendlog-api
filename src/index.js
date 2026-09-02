@@ -6,6 +6,36 @@ const json = (data, status = 200) =>
 
 const subgenre = (v) => v?.trim().toLowerCase() || null;
 
+function randomToken(bytes = 24) {
+  const arr = new Uint8Array(bytes);
+  crypto.getRandomValues(arr);
+  return btoa(String.fromCharCode(...arr))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function readCookie(request, name) {
+  const cookie = request.headers.get("cookie") || "";
+  const m = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+// Evita que un usuario cree/actualice un envio apuntando al contacto
+// o pack de otra cuenta (los IDs son correlativos y adivinables).
+async function ownsContact(env, contactId, userId) {
+  const { results } = await env.DB.prepare(
+    `SELECT 1 FROM contacts WHERE id = ? AND user_id = ?`
+  ).bind(contactId, userId).all();
+  return results.length > 0;
+}
+
+async function ownsPack(env, packId, userId) {
+  if (!packId) return true;
+  const { results } = await env.DB.prepare(
+    `SELECT 1 FROM packs WHERE id = ? AND user_id = ?`
+  ).bind(packId, userId).all();
+  return results.length > 0;
+}
+
 // --- sesion: cookie firmada con HMAC ---
 
 const enc = new TextEncoder();
@@ -57,6 +87,7 @@ export default {
     // --- auth ---
 
     if (path === "/api/auth/login") {
+      const state = randomToken();
       const params = new URLSearchParams({
         client_id: env.GOOGLE_CLIENT_ID,
         redirect_uri: `${origin}/api/auth/callback`,
@@ -64,15 +95,30 @@ export default {
         scope: "openid email profile",
         access_type: "online",
         prompt: "select_account",
+        state,
       });
-      return Response.redirect(
-        `https://accounts.google.com/o/oauth2/v2/auth?${params}`, 302
-      );
+      return new Response(null, {
+        status: 302,
+        headers: {
+          location: `https://accounts.google.com/o/oauth2/v2/auth?${params}`,
+          "set-cookie": `oauth_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
+        },
+      });
     }
 
     if (path === "/api/auth/callback") {
       const code = url.searchParams.get("code");
       if (!code) return Response.redirect(origin, 302);
+
+      const state = url.searchParams.get("state");
+      const expectedState = readCookie(request, "oauth_state");
+      const clearStateCookie = "oauth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0";
+      if (!state || !expectedState || state !== expectedState) {
+        return new Response(null, {
+          status: 302,
+          headers: { location: origin, "set-cookie": clearStateCookie },
+        });
+      }
 
       const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
@@ -101,13 +147,10 @@ export default {
       ).bind(userId, info.email, info.name || null, info.picture || null).run();
 
       const session = await makeSession(userId, env.SESSION_SECRET);
-      return new Response(null, {
-        status: 302,
-        headers: {
-          location: origin,
-          "set-cookie": `session=${session}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`,
-        },
-      });
+      const headers = new Headers({ location: origin });
+      headers.append("set-cookie", `session=${session}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`);
+      headers.append("set-cookie", clearStateCookie);
+      return new Response(null, { status: 302, headers });
     }
 
     if (path === "/api/auth/logout") {
@@ -269,6 +312,17 @@ export default {
         if (b.contacts.length > 200) return json({ error: "too many" }, 400);
         if (!b.sent_at) return json({ error: "sent_at required" }, 400);
 
+        const ids = [...new Set(b.contacts.map((c) => c.id))];
+        const placeholders = ids.map(() => "?").join(",");
+        const { results: owned } = await env.DB.prepare(
+          `SELECT id FROM contacts WHERE user_id = ? AND id IN (${placeholders})`
+        ).bind(USER_ID, ...ids).all();
+        if (owned.length !== ids.length) return json({ error: "invalid contact" }, 400);
+
+        if (!(await ownsPack(env, b.pack_id, USER_ID))) {
+          return json({ error: "invalid pack" }, 400);
+        }
+
         const stmt = env.DB.prepare(
           `INSERT INTO sends (user_id, contact_id, pack_id, channel, sent_at, status)
            VALUES (?, ?, ?, ?, ?, 'pending')`
@@ -298,6 +352,12 @@ export default {
         if (!b.contact_id || !b.channel || !b.sent_at) {
           return json({ error: "contact_id, channel and sent_at required" }, 400);
         }
+        if (!(await ownsContact(env, b.contact_id, USER_ID))) {
+          return json({ error: "invalid contact" }, 400);
+        }
+        if (!(await ownsPack(env, b.pack_id, USER_ID))) {
+          return json({ error: "invalid pack" }, 400);
+        }
 
         const { results } = await env.DB.prepare(
           `INSERT INTO sends (user_id, contact_id, pack_id, channel, sent_at, status, notes)
@@ -314,6 +374,9 @@ export default {
 
       if (mSend && request.method === "PUT") {
         const b = await request.json();
+        if (!(await ownsPack(env, b.pack_id, USER_ID))) {
+          return json({ error: "invalid pack" }, 400);
+        }
 
         const { results } = await env.DB.prepare(
           `UPDATE sends SET
