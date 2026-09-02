@@ -1,64 +1,158 @@
-# Send Log
+# luvbesly.com
 
-A CRM for music producers to track outreach: who you sent a beat or sound pack to, on which platform, and what happened next.
+Official website and beat-selling platform for **luvbesly**. A static site with
+no framework and no build step, plus a single server function for the YouTube
+feed. Deployed on Cloudflare Pages.
 
-**Live:** [app.luvbesly.com](https://app.luvbesly.com)
+🔗 [luvbesly.com](https://luvbesly.com)
 
-![Contacts view](docs/screenshots/contacts.png)
-
-## Why
-
-As an underground producer, "who did I send this pack to, and did they ever get back to me?" used to live in a spreadsheet that fell out of date the moment I stopped looking at it. Send Log replaces that spreadsheet with something that actually tracks state: every contact has a history of sends, every send has a status, and stale conversations surface themselves instead of getting lost in a scroll.
-
-## What it does
-
-- **Contacts** — producers, artists, and labels you reach out to, with their type, subgenre, listener count, and whichever handle you use to contact them (Twitter/X, Instagram, Discord, or email).
-- **Sends** — a log of every pack or beat you sent, per contact: channel, date, and status (`pending → replied → producing → used → released`, plus `declined` / `no_reply`). A contact can have any number of sends over time.
-
-![Contact detail](docs/screenshots/contact-detail.png)
-- **Follow-up view** — sends stuck in `pending` past a configurable number of days, so nothing silently dies in your inbox.
-
-![Follow-up view](docs/screenshots/followup.png)
-
-- **Bulk send** — select a batch of contacts and log a send to all of them at once, instead of one at a time.
-- **Packs** — group sends by which pack/beat you sent, created inline as you log a send.
-- **Result links** — mark a send as `released` and attach the link to the result (a video, a Spotify link, whatever proves the placement happened).
-- **Google sign-in** — no separate account system; you log in with the Google account you already have.
-- **Self-serve account deletion** — any user can permanently delete their account and all their data from inside the app.
+---
 
 ## Stack
 
-- **Backend:** a single [Cloudflare Worker](https://developers.cloudflare.com/workers/) (`src/index.js`) — no framework, just a router over `fetch()`. Handles auth, the REST-ish JSON API under `/api/*`, and serves the built frontend as static assets.
-- **Database:** [Cloudflare D1](https://developers.cloudflare.com/d1/) (SQLite at the edge). Four tables — `users`, `contacts`, `packs`, `sends` — all scoped by `user_id`.
-- **Frontend:** React + Vite (`web/`), built to `public/` and served by the same Worker.
-- **Auth:** Google OAuth (authorization code flow), session kept in a signed, `HttpOnly`, `Secure` cookie — the signature is HMAC-SHA256 over the payload using a secret that never touches the client.
-- **Rate limiting:** Cloudflare's native [Workers rate limiting binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/), applied per-IP to the whole API before auth even runs.
+HTML, CSS, and JavaScript with native ES modules. No runtime dependencies and
+no bundler: what's in `public/` is exactly what gets served. Wrangler is only
+used for local dev and deployment.
 
-No ORM, no build step on the backend, no external services beyond Google (for sign-in) and Cloudflare (for everything else).
+---
 
-## Project layout
+## Structure
 
 ```
-src/index.js       Worker: routing, auth, API, rate limiting
-web/                React frontend (Vite)
-  src/App.jsx       the entire UI — one component tree
-  src/App.css       styling, matching the parent site's design tokens
-schema.sql          D1 schema
-migrate-*.sql       one-off migrations run by hand against D1
-wrangler.jsonc      Worker config: bindings, routes, rate limit
+.
+├── public/                 Public root. Everything here is served as-is
+│   ├── *.html              Pages
+│   ├── _headers            Security and cache headers
+│   ├── robots.txt
+│   ├── sitemap.xml
+│   ├── css/style.css
+│   ├── js/
+│   │   ├── main.js         Router: nav and lazy module loading
+│   │   ├── dom.js          DOM-creation and fetch helpers
+│   │   ├── player.js       Global audio player
+│   │   ├── beats.js        Beats page
+│   │   ├── kits.js         Sound kits page
+│   │   ├── vsts.js         VST Vault with search
+│   │   └── videos.js       YouTube feed (client)
+│   ├── data/               Editable content, no code changes needed
+│   │   ├── beats.json
+│   │   ├── kits.json
+│   │   └── vsts.json
+│   ├── images/
+│   └── audio/
+├── functions/
+│   └── api/videos.js       Cached proxy to the YouTube API
+├── check.sh                Structure and integrity check
+├── wrangler.jsonc
+└── .dev.vars               Local secrets — git-ignored
 ```
 
-## Running locally
+---
+
+## Development
+
+Requires Node.js 20 or newer.
 
 ```bash
-npx wrangler dev        # Worker + API, in the project root
+git clone https://github.com/joseebr19/luvbesly-web.git
+cd luvbesly-web
+npx wrangler pages dev
 ```
+
+Runs on `http://localhost:8788`. Don't open the HTML files by double-clicking
+them: they use absolute paths and `fetch`, so they need to be served from a
+server.
+
+Before deploying, run the check:
+
 ```bash
-cd web && npm run dev   # frontend, proxies /api to the Worker above
+bash check.sh
 ```
 
-Google sign-in doesn't work in local dev — the session cookie is `Secure`, so it's dropped over plain HTTP. Everything else (the API, the UI, styling) can be checked locally; auth-gated flows need a deploy to test end to end.
+It verifies the structure is complete, that JSON references point to files
+that actually exist, and that there are no stray keys in `public/`.
 
-## Notes on scope
+---
 
-This is a solo project built to solve one specific, recurring annoyance in my own workflow — it isn't trying to be a general-purpose CRM. The data model and status pipeline are shaped around how outreach actually works for a beat producer, not abstracted into something more generic than it needs to be.
+## Environment variables
+
+| Variable | Description |
+|---|---|
+| `YOUTUBE_KEY` | YouTube Data API v3 key, restricted to that single API |
+| `YOUTUBE_CHANNEL_ID` | Channel ID, starts with `UC` |
+
+**Locally:** `.dev.vars` file at the project root.
+
+```
+YOUTUBE_KEY=...
+YOUTUBE_CHANNEL_ID=UC...
+```
+
+**In production:** Cloudflare Pages dashboard → Settings → Variables and
+Secrets, Production environment. `YOUTUBE_KEY` must be marked as **Secret**.
+
+Variables are injected at deploy time, so after adding or changing one you
+need to redeploy.
+
+---
+
+## Deployment
+
+Every push to `main` deploys automatically. Manually:
+
+```bash
+npx wrangler pages deploy
+```
+
+---
+
+## Editing content
+
+Content lives in `public/data/`, not in the code. To publish a new beat, add
+an entry to `beats.json` and upload the MP3 to `public/audio/`:
+
+```json
+{
+  "id": 7,
+  "title": "NAME",
+  "bpm": "150 BPM",
+  "key": "C MAJOR",
+  "audioUrl": "/audio/Name.mp3",
+  "buyUrl": "https://www.beatstars.com/luvbesly"
+}
+```
+
+Same process for `kits.json` and `vsts.json`.
+
+> **Important:** Cloudflare is case-sensitive for filenames; Windows isn't. A
+> `Beat.mp3` referenced as `beat.mp3` works locally and fails in production.
+> `check.sh` catches these cases.
+
+---
+
+## Security notes
+
+- No credentials reach the client. The browser calls `/api/videos`, and the
+  key lives as a server-side secret.
+- The function uses `playlistItems` (1 quota unit) instead of `search` (100),
+  with a one-hour edge cache. Approximate usage: ~24 units/day against a
+  10,000 daily quota.
+- All DOM is built with `textContent`; no data is interpolated into HTML.
+- Strict CSP in `_headers`, no `unsafe-inline` or `unsafe-eval`. If an inline
+  style or script is ever needed, its hash should be declared rather than
+  loosening the policy.
+
+---
+
+## License
+
+The **source code** in this repository is released under the MIT license (see
+[LICENSE](LICENSE)).
+
+That license does **not** cover the creative content: the audio files in
+`public/audio/`, the artwork and images in `public/images/`, the logo, or the
+**luvbesly** brand identity. All rights to that material are reserved. Use,
+distribution, or resale requires explicit permission.
+
+VST Vault links point to third-party software hosted externally. This
+repository doesn't distribute or store any of those files.
