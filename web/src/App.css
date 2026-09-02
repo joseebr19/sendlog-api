@@ -169,15 +169,3 @@ button.small { padding: 4px 8px; }
   background: #0e0e10; border: 1px solid #2a2a30; color: #e8e8ea;
   padding: 6px 8px; border-radius: 6px; font: inherit; width: 100%; box-sizing: border-box;
 }
-
-.btn-import {
-  background: #1e1e22; border: 1px solid #2a2a30; color: #e8e8ea;
-  padding: 7px 14px; border-radius: 6px; font: inherit; cursor: pointer;
-  display: inline-flex; align-items: center; text-decoration: none;
-}
-.btn-import:hover { background: #26262b; }
-
-.import-summary {
-  background: #14301f; color: #8fe5a8; padding: 10px 14px;
-  border-radius: 6px; cursor: pointer; margin: 0 0 16px;
-}

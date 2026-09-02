@@ -29,5 +29,12 @@
 			"database_name": "placements",
 			"database_id": "83bdd480-8257-405c-9284-a7902ec86aa2"
 		}
+	],
+	"ratelimits": [
+		{
+			"name": "API_LIMITER",
+			"namespace_id": "1001",
+			"simple": { "limit": 120, "period": 60 }
+		}
 	]
 }
