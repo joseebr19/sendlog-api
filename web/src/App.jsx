@@ -521,7 +521,7 @@ export default function App() {
                     <td>{c.type}</td>
                     <td>{c.subgenre}</td>
                     <td className="handle">
-                      {handleOf(c)}
+                      <span className="handle-text">{handleOf(c)}</span>
                       {channelOf(c) && <span className="channel">{CHANNELS[channelOf(c)]}</span>}
                     </td>
                     <td className="num">{formatListeners(c.listeners)}</td>
