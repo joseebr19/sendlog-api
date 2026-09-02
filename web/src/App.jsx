@@ -53,6 +53,8 @@ function SendRow({ send, packs, onSave, onDelete, onNewPack }) {
     if (status === "released" && !result_url) {
       const url = prompt("Link to the result (video, Spotify, etc.) — optional, you can add it later:");
       if (url && url.trim()) result_url = url.trim();
+    } else if (status !== "released" && s.status === "released") {
+      result_url = null;
     }
     const next = { ...s, status, result_url };
     setS(next);
@@ -346,6 +348,8 @@ export default function App() {
     if (status === "released" && !result_url) {
       const url = prompt("Link to the result (video, Spotify, etc.) — optional, you can add it later:");
       if (url && url.trim()) result_url = url.trim();
+    } else if (status !== "released" && record.status === "released") {
+      result_url = null;
     }
     saveSend({ ...record, status, result_url });
   };
