@@ -4,6 +4,8 @@ A CRM for music producers to track outreach: who you sent a beat or sound pack t
 
 **Live:** [app.luvbesly.com](https://app.luvbesly.com)
 
+![Contacts view](docs/screenshots/contacts.png)
+
 ## Why
 
 As an underground producer, "who did I send this pack to, and did they ever get back to me?" used to live in a spreadsheet that fell out of date the moment I stopped looking at it. Send Log replaces that spreadsheet with something that actually tracks state: every contact has a history of sends, every send has a status, and stale conversations surface themselves instead of getting lost in a scroll.
@@ -12,7 +14,12 @@ As an underground producer, "who did I send this pack to, and did they ever get 
 
 - **Contacts** — producers, artists, and labels you reach out to, with their type, subgenre, listener count, and whichever handle you use to contact them (Twitter/X, Instagram, Discord, or email).
 - **Sends** — a log of every pack or beat you sent, per contact: channel, date, and status (`pending → replied → producing → used → released`, plus `declined` / `no_reply`). A contact can have any number of sends over time.
+
+![Contact detail](docs/screenshots/contact-detail.png)
 - **Follow-up view** — sends stuck in `pending` past a configurable number of days, so nothing silently dies in your inbox.
+
+![Follow-up view](docs/screenshots/followup.png)
+
 - **Bulk send** — select a batch of contacts and log a send to all of them at once, instead of one at a time.
 - **Packs** — group sends by which pack/beat you sent, created inline as you log a send.
 - **Result links** — mark a send as `released` and attach the link to the result (a video, a Spotify link, whatever proves the placement happened).
